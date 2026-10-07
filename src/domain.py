@@ -89,3 +89,23 @@ def normalize_source(payload):
         "station_id": payload.get("station_id"),
         "frequency_mhz": payload.get("frequency_mhz"),
     }
+
+
+def normalize_planned_action(payload):
+    action = require_text(payload, "action")
+    action_payload = payload.get("payload") or {}
+    if not isinstance(action_payload, dict):
+        raise DomainError("invalid_payload", "动作载荷必须是对象")
+    action_key = payload.get("action_key")
+    if action_key is not None:
+        action_key = str(action_key).strip() or None
+    return {"action": action, "payload": action_payload, "action_key": action_key}
+
+
+def normalize_sync(payload):
+    group_no = require_text(payload, "group_no")
+    items = payload.get("items") or []
+    actions = payload.get("actions") or []
+    if not isinstance(items, list) or not isinstance(actions, list):
+        raise DomainError("invalid_sync", "items 和 actions 必须是数组")
+    return {"group_no": group_no, "items": items, "actions": actions}
