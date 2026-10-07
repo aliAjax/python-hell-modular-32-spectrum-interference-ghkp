@@ -52,9 +52,18 @@ def build_handler(service, static_dir):
                     return self._send(200, service.state())
                 if path == "/api/items":
                     return self._send(200, {"items": service.list_items()})
+                if path == "/api/merge-groups":
+                    return self._send(200, {"groups": service.list_merge_groups()})
                 parts = [part for part in path.split("/") if part]
+                if len(parts) == 4 and parts[:2] == ["api", "merge-groups"] and parts[3] == "candidates":
+                    group = service.repository.get_merge_group(parts[2])
+                    return self._send(200, group)
+                if len(parts) == 3 and parts[:2] == ["api", "merge-groups"]:
+                    return self._send(200, service.repository.get_merge_group(parts[2]))
                 if len(parts) == 3 and parts[:2] == ["api", "items"]:
                     return self._send(200, service.get_item(int(parts[2])))
+                if len(parts) == 4 and parts[:2] == ["api", "items"] and parts[3] == "pending-actions":
+                    return self._send(200, {"actions": service.repository.list_pending_actions(int(parts[2]))})
                 if len(parts) == 4 and parts[:2] == ["api", "items"] and parts[3] == "audit":
                     item = service.get_item(int(parts[2]))
                     return self._send(200, {"events": item["audit"]})
@@ -78,8 +87,32 @@ def build_handler(service, static_dir):
                 parts = [part for part in path.split("/") if part]
                 if parts == ["api", "items"]:
                     return self._send(201, service.create_item(payload, actor, role, region))
+                if parts == ["api", "merge-groups", "rebuild"]:
+                    return self._send(200, service.rebuild_pending_groups(actor, role, region))
+                if parts == ["api", "offline-sync"]:
+                    return self._send(200, service.sync_group(payload, actor, role, region))
+                if len(parts) == 5 and parts[:2] == ["api", "merge-groups"] and parts[4] in ("master", "designate"):
+                    expected = payload.pop("expected_version", None)
+                    return self._send(200, service.designate_master(parts[2], payload, actor, role, region, expected))
+                if len(parts) == 4 and parts[:2] == ["api", "pending-actions"] and parts[3] == "execute":
+                    pending_id = int(payload.pop("pending_action_id", None) or 0)
+                    expected = payload.pop("expected_version", None)
+                    return self._send(200, service.execute_pending_action(
+                        pending_id, payload, actor, role, expected, region
+                    ))
+                if len(parts) == 5 and parts[:2] == ["api", "pending-actions"] and parts[4] == "execute":
+                    pending_id = int(payload.pop("pending_action_id", None) or parts[2])
+                    expected = payload.pop("expected_version", None)
+                    return self._send(200, service.execute_pending_action(
+                        pending_id, payload, actor, role, expected, region
+                    ))
                 if len(parts) == 4 and parts[:2] == ["api", "items"] and parts[3] == "sources":
                     return self._send(201, service.add_source(int(parts[2]), payload, actor, role, region))
+                if len(parts) == 4 and parts[:2] == ["api", "items"] and parts[3] == "pending-actions":
+                    action = payload.pop("action", "")
+                    if not action:
+                        raise DomainError("action_required", "缺少 action", 400)
+                    return self._send(201, service.queue_action(int(parts[2]), action, payload, actor, role, region))
                 if len(parts) == 4 and parts[:2] == ["api", "items"] and parts[3] == "actions":
                     action = payload.pop("action", "")
                     if not action:

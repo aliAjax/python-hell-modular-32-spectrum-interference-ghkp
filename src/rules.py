@@ -13,11 +13,16 @@ ACTION_ROLES = {
     "coordinate": {"coordinator"},
     "resolve": {"coordinator", "regulator"},
     "correct_measurement": {"analyst", "monitor"},
+    "change_region": {"coordinator", "regulator"},
     "cancel": {"coordinator"},
 }
 ENFORCE_REGION = True
-REGION_SENSITIVE_ACTIONS = {"suspend", "coordinate", "resolve", "cancel"}
-ACTION_REQUIRES_VERSION = {"suspend", "coordinate", "resolve", "cancel"}
+REGION_SENSITIVE_ACTIONS = {"suspend", "coordinate", "resolve", "cancel", "change_region"}
+ACTION_REQUIRES_VERSION = {"suspend", "coordinate", "resolve", "cancel", "change_region"}
+MERGE_RECALCULATE_ACTIONS = {"assess", "locate", "suspend", "coordinate", "resolve", "cancel", "change_region"}
+ACTIVE_STATUSES = {"pending", "assessed", "located", "suspended", "coordinating"}
+MERGE_WINDOW_SECONDS = 15 * 60
+NEARBY_METERS = 5000.0
 
 
 def assess(payload):
@@ -104,6 +109,15 @@ def apply_action(item, action, payload, actor, role):
             raise DomainError("interference_present", "干扰尚未消除，不能结案", 409)
         current["resolution"] = {"evidence": _text(payload, "evidence"), "cleared": True}
         return "resolved", current, {"evidence": current["resolution"]["evidence"]}
+
+    if action == "change_region":
+        _need_status(item, {"pending", "assessed", "located", "suspended", "coordinating"})
+        new_region = _text(payload, "new_region")
+        if new_region == current.get("region"):
+            raise DomainError("region_unchanged", "新管辖区域与当前区域相同")
+        old_region = current.get("region")
+        current["region"] = new_region
+        return status, current, {"old_region": old_region, "new_region": new_region}
 
     if action == "cancel":
         _need_status(item, {"pending", "assessed"})

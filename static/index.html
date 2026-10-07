@@ -1,5 +1,13 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>无线电频谱干扰调查</title><body><h1>无线电频谱干扰调查与协调</h1><p>使用 JSON API 创建干扰事件、记录来源、定位和执行处置动作。</p><pre>GET /health
-GET /api/state
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>无线电频谱干扰调查</title><body><h1>无线电频谱干扰调查与协调</h1><p>同区域、同频段、相近地点且 15 分钟内重复上报的事件进入待归并区；协调人定主事件后整批接账。</p><pre>GET  /health
+GET  /api/state
 POST /api/items
 POST /api/items/{id}/sources
-POST /api/items/{id}/actions</pre></body></html>
+POST /api/items/{id}/actions
+GET  /api/items/{id}/audit
+POST /api/items/{id}/pending-actions
+POST /api/pending-actions/{id}/execute
+GET  /api/merge-groups
+GET  /api/merge-groups/{group_no}/candidates
+POST /api/merge-groups/{group_no}/master
+POST /api/merge-groups/rebuild
+POST /api/offline-sync</pre></body></html>
